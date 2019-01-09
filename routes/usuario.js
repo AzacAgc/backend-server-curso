@@ -15,7 +15,7 @@ app.get("/", (req, res, next) => {
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    Usuario.find({}, 'nombre email img role')
+    Usuario.find({}, 'nombre email img role google')
         .skip(desde)
         .limit(5)
         .exec(
@@ -28,7 +28,7 @@ app.get("/", (req, res, next) => {
                     });
                 }
 
-                Usuario.count({}, (err, conteo) => {
+                Usuario.countDocuments((err, conteo) => {
                     res.status(200).json({
                         ok: true,
                         usuarios: usuarios,
@@ -41,7 +41,7 @@ app.get("/", (req, res, next) => {
 // ===============================
 // Actualizar usuario
 // ===============================
-app.put('/:id', mdAutenticacion.verificarToken, (req, res) => {
+app.put('/:id', [mdAutenticacion.verificarToken, mdAutenticacion.verificarADMIN_ROLE_o_USUARIO], (req, res) => {
 
     var id = req.params.id;
     var body = req.body;
@@ -91,7 +91,7 @@ app.put('/:id', mdAutenticacion.verificarToken, (req, res) => {
 // ===============================
 // Crear usuario
 // ===============================
-app.post('/', mdAutenticacion.verificarToken, (req, res) => {
+app.post('/', (req, res) => {
 
     var body = req.body;
 
@@ -124,35 +124,35 @@ app.post('/', mdAutenticacion.verificarToken, (req, res) => {
 // ===============================
 // Borrar un usuario por ID
 // ===============================
-app.delete('/:id', mdAutenticacion.verificarToken, (req, res) => {
+app.delete(
+    '/:id',
+    [mdAutenticacion.verificarToken, mdAutenticacion.verificarADMIN_ROLE],
+    (req, res) => {
+        var id = req.params.id;
 
-    var id = req.params.id;
+        Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+            if (err) {
+                return res.status(500).json({
+                    ok: false,
+                    mensaje: 'Error al borrar el usuario',
+                    errors: err
+                });
+            }
 
-    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+            if (!usuarioBorrado) {
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: 'No existe ningun usuario con ese ID',
+                    errors: {message: 'No existe ningun usuario con ese ID'}
+                });
+            }
 
-        if (err) {
-            return res.status(500).json({
-                ok: false,
-                mensaje: "Error al borrar el usuario",
-                errors: err
+            res.status(200).json({
+                ok: true,
+                usuario: usuarioBorrado
             });
-        }
-
-        if (!usuarioBorrado) {
-            return res.status(400).json({
-                ok: false,
-                mensaje: "No existe ningun usuario con ese ID",
-                errors: { message: 'No existe ningun usuario con ese ID' }
-            });
-        }
-
-        res.status(200).json({
-            ok: true,
-            usuario: usuarioBorrado
         });
-
-    });
-
-});
+    }
+);
 
 module.exports = app;
